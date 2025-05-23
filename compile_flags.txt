@@ -1,0 +1,5 @@
+-I./include
+-O2
+-Wall
+-Wextra
+-Wpedantic
