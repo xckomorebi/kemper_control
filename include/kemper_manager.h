@@ -5,7 +5,8 @@
 #include <pthread.h>
 
 #define MAX_RIG_NAME_LEN 32
-#define PROFILER_DEVICE_NAME "Profiler"
+#define PROFILER_DEVICE_PREFIX "Profiler"
+#define PROFILER_DEVICE_PREFIX_LEN 8
 
 // in fact one kemper performance has 5 slots
 // but I only use 3 of them

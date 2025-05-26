@@ -56,7 +56,7 @@ int kemper_connect(KemperManager *r) {
 
         for (int i = 0; i < Pm_CountDevices(); i++) {
             const PmDeviceInfo *info = Pm_GetDeviceInfo(i);
-            if (strcmp(info->name, PROFILER_DEVICE_NAME) != 0) {
+            if (strncmp(info->name, PROFILER_DEVICE_PREFIX, PROFILER_DEVICE_PREFIX_LEN) != 0) {
                 continue;
             }
             if (info->input) {
