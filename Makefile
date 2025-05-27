@@ -1,5 +1,5 @@
 CFLAGS := -I./include -O2 -Wall -Wextra -Wpedantic
-LDFLAGS := -lncurses -lportmidi
+LDFLAGS := -lportmidi -lncursesw
 
 CFILES := $(wildcard src/*.c)
 OBJFILES := $(patsubst src/%.c, output/%.o, $(CFILES))

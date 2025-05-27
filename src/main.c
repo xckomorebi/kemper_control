@@ -3,11 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <locale.h>
 
 #include "kemper_manager.h"
 #include "tui.h"
 
 int main(void) {
+    setlocale(LC_ALL, "en_US.UTF-8");
     init_tui();
 
     KemperManager r = KEMPER_MANAGER_INIT;

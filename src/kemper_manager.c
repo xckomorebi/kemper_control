@@ -37,7 +37,7 @@ static void send_all_query(KemperManager *r) {
 #undef SEND_QUERY
 }
 
-#define LOADING_STR "loading..."
+#define LOADING_STR "load"
 
 int kemper_connect(KemperManager *r) {
     PmError err;
@@ -94,7 +94,7 @@ int kemper_connect(KemperManager *r) {
 
     pthread_mutex_lock(&r->lock);
     r->state = KEMPER_STATE_CONNECTED;
-    r->current_slot = -1;
+    r->current_slot = 0;
     strcpy(r->perf_name, LOADING_STR);
     for (int i = 0; i < MAX_SLOTS_NUM; i++) {
         strcpy(r->rig_name[i], LOADING_STR);
@@ -115,6 +115,7 @@ static void process_program_change(KemperManager *r, int control, int value) {
 
         pthread_mutex_lock(&r->lock);
         r->current_perf = value;
+        r->current_slot = 0;
         strcpy(r->perf_name, LOADING_STR);
         pthread_mutex_unlock(&r->lock);
 
