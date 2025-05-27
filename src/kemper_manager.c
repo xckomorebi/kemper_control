@@ -2,13 +2,14 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "kemper_manager.h"
 
-#define QUERY_BYTES_FOR_SLOT(slot_num)                                         \
-    {0xF0, 0x00, 0x20, 0x33, 0x02, 0x7F,     0x47,                             \
+#define QUERY_BYTES_FOR_SLOT(slot_num)             \
+    {0xF0, 0x00, 0x20, 0x33, 0x02, 0x7F,     0x47, \
      0x00, 0x00, 0x00, 0x01, 0x00, slot_num, 0xF7}
 
 static unsigned char PERF_QUERY_BYTES[] = QUERY_BYTES_FOR_SLOT(0x00);
@@ -17,15 +18,14 @@ static unsigned char SLOT2_QUERY_BYTES[] = QUERY_BYTES_FOR_SLOT(0x02);
 static unsigned char SLOT3_QUERY_BYTES[] = QUERY_BYTES_FOR_SLOT(0x03);
 
 static void send_all_query(KemperManager *r) {
-
-#define SEND_QUERY(query_bytes)                                                \
-    err = Pm_WriteSysEx(r->midi_out, 0, query_bytes);                          \
-    if (err != pmNoError) {                                                    \
-        pthread_mutex_lock(&r->lock);                                          \
-        r->error_msg = Pm_GetErrorText(err);                                   \
-        r->state = KEMPER_STATE_ERROR;                                         \
-        pthread_mutex_unlock(&r->lock);                                        \
-        return;                                                                \
+#define SEND_QUERY(query_bytes)                       \
+    err = Pm_WriteSysEx(r->midi_out, 0, query_bytes); \
+    if (err != pmNoError) {                           \
+        pthread_mutex_lock(&r->lock);                 \
+        r->error_msg = Pm_GetErrorText(err);          \
+        r->state = KEMPER_STATE_ERROR;                \
+        pthread_mutex_unlock(&r->lock);               \
+        return;                                       \
     }
 
     PmError err;
@@ -56,7 +56,8 @@ int kemper_connect(KemperManager *r) {
 
         for (int i = 0; i < Pm_CountDevices(); i++) {
             const PmDeviceInfo *info = Pm_GetDeviceInfo(i);
-            if (strncmp(info->name, PROFILER_DEVICE_PREFIX, PROFILER_DEVICE_PREFIX_LEN) != 0) {
+            if (strncmp(info->name, PROFILER_DEVICE_PREFIX,
+                        PROFILER_DEVICE_PREFIX_LEN) != 0) {
                 continue;
             }
             if (info->input) {
@@ -93,6 +94,7 @@ int kemper_connect(KemperManager *r) {
     }
 
     pthread_mutex_lock(&r->lock);
+    r->midi_in_id = in_device_id;
     r->state = KEMPER_STATE_CONNECTED;
     r->current_slot = 0;
     strcpy(r->perf_name, LOADING_STR);
@@ -140,7 +142,8 @@ static void process_program_change(KemperManager *r, int control, int value) {
 #define SYSEX_PREFIX_LEN 13
 #define SYSEX_TO_STR(x) ((const char *)((x) + SYSEX_PREFIX_LEN))
 
-static void process_sysex(KemperManager *r, unsigned char *sysex_buffer,
+static void process_sysex(KemperManager *r,
+                          unsigned char *sysex_buffer,
                           size_t sysex_index) {
     if (sysex_index < 11) {
         return;
@@ -182,8 +185,24 @@ static void process_sysex(KemperManager *r, unsigned char *sysex_buffer,
 void *midi_process_main_loop(void *handle) {
     PmEvent buffer;
 
+    static int count = 0;
     KemperManager *r = (KemperManager *)handle;
     while (true) {
+        if (count++ % 1000 == 0) {
+            const PmDeviceInfo *info = Pm_GetDeviceInfo(r->midi_in_id);
+            if (!info) {
+                pthread_mutex_lock(&r->lock);
+                r->state = KEMPER_STATE_DISCONNECTED;
+                pthread_mutex_unlock(&r->lock);
+
+                int ret = kemper_connect(r);
+                if (ret != 0) {
+                    sleep(10);
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }
+
         if (Pm_Poll(r->midi_in)) {
             int count = Pm_Read(r->midi_in, &buffer, 1);
 
@@ -196,32 +215,32 @@ void *midi_process_main_loop(void *handle) {
                 unsigned char sysex_buffer[SYSEX_BUFFER_SIZE] = {0};
 
                 switch (status) {
-                case MIDI_TYPE_SYSEX:
-                    do {
-                        msg = buffer.message;
-                        sysex_buffer[sysex_index++] = msg & 0xFF;
-                        if (sysex_buffer[sysex_index - 1] == 0xF7)
-                            break;
-                        sysex_buffer[sysex_index++] = (msg >> 8) & 0xFF;
-                        if (sysex_buffer[sysex_index - 1] == 0xF7)
-                            break;
-                        sysex_buffer[sysex_index++] = (msg >> 16) & 0xFF;
-                        if (sysex_buffer[sysex_index - 1] == 0xF7)
-                            break;
-                        sysex_buffer[sysex_index++] = (msg >> 24) & 0xFF;
-                        if (sysex_buffer[sysex_index - 1] == 0xF7)
-                            break;
-                    } while (Pm_Read(r->midi_in, &buffer, 1) > 0);
-                    process_sysex(r, sysex_buffer, sysex_index);
-                    break;
-                case MIDI_TYPE_CC:
-                    control = Pm_MessageData1(msg);
-                    value = Pm_MessageData2(msg);
-                    process_program_change(r, control, value);
-                    break;
+                    case MIDI_TYPE_SYSEX:
+                        do {
+                            msg = buffer.message;
+                            sysex_buffer[sysex_index++] = msg & 0xFF;
+                            if (sysex_buffer[sysex_index - 1] == 0xF7)
+                                break;
+                            sysex_buffer[sysex_index++] = (msg >> 8) & 0xFF;
+                            if (sysex_buffer[sysex_index - 1] == 0xF7)
+                                break;
+                            sysex_buffer[sysex_index++] = (msg >> 16) & 0xFF;
+                            if (sysex_buffer[sysex_index - 1] == 0xF7)
+                                break;
+                            sysex_buffer[sysex_index++] = (msg >> 24) & 0xFF;
+                            if (sysex_buffer[sysex_index - 1] == 0xF7)
+                                break;
+                        } while (Pm_Read(r->midi_in, &buffer, 1) > 0);
+                        process_sysex(r, sysex_buffer, sysex_index);
+                        break;
+                    case MIDI_TYPE_CC:
+                        control = Pm_MessageData1(msg);
+                        value = Pm_MessageData2(msg);
+                        process_program_change(r, control, value);
+                        break;
                 }
             }
         }
-        usleep(50000); // sleep for 50ms
+        // usleep(50000); // sleep for 50ms
     }
 }

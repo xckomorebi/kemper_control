@@ -22,11 +22,11 @@ int main(void) {
         return 1;
     }
 
-    ret = kemper_connect(&r);
-    if (ret != 0) {
-        sleep(5);
-        return EXIT_FAILURE;
-    }
+    // ret = kemper_connect(&r);
+    // if (ret != 0) {
+    //     sleep(5);
+    //     return EXIT_FAILURE;
+    // }
 
     pthread_t midi_thread;
     int ret2 =

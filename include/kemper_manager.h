@@ -30,6 +30,7 @@ typedef struct {
     KemperState state;
 
     PortMidiStream *midi_in;
+    PmDeviceID midi_in_id;
     PortMidiStream *midi_out;
 
     pthread_mutex_t lock;
