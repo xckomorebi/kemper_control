@@ -42,13 +42,14 @@ typedef struct {
     const char *error_msg;
 } KemperManager;
 
-#define KEMPER_MANAGER_INIT              \
-    {.state = KEMPER_STATE_DISCONNECTED, \
-     .current_perf = -1,                 \
-     .current_slot = -1,                 \
+#define KEMPER_MANAGER_INIT                                                    \
+    {.state = KEMPER_STATE_DISCONNECTED,                                       \
+     .current_perf = -1,                                                       \
+     .current_slot = -1,                                                       \
+     .midi_in_id = pmNoDevice,                                                 \
      .lock = PTHREAD_MUTEX_INITIALIZER}
 
 int kemper_connect(KemperManager *r);
 void *midi_process_main_loop(void *handle);
 
-#endif  // KEMPER_MANAGER_H
+#endif // KEMPER_MANAGER_H
